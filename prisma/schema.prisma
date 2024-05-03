@@ -19,10 +19,6 @@ model User {
   email     String   @unique
   firstName String?
   password String
-  isResettingPassword Boolean @default(false)
-  resetPasswordToken String?  @unique
-  avatarFileKey String?  @unique
-
   conversations Conversation[]
   sentMessages ChatMessage[]
 }
