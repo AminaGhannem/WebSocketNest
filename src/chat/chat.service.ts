@@ -211,6 +211,25 @@ export class ChatService {
     return conversation;
   }
 
+  async likeMessage(messageId: string) {
+    return this.prisma.like.create({
+      data: { messageId },
+    });
+  }
+
+  async commentMessage(messageId: string, content: string) {
+    return this.prisma.comment.create({
+      data: { messageId, content },
+    });
+  }
+
+  async getMessageInteractions(messageId: string) {
+    return this.prisma.chatMessage.findUnique({
+      where: { id: messageId },
+      include: { likes: true, comments: true },
+    });
+  }
+
   async getConversation({
     userId,
     conversationId,

@@ -20,7 +20,7 @@ export class AppGateway implements OnGatewayInit, OnModuleInit {
 
   constructor(
     private socketService: SocketService,
-    private chatService: ChatService,
+    private readonly chatService: ChatService,
   ) {}
   afterInit() {
     this.socketService.server = this.server;
@@ -41,9 +41,36 @@ export class AppGateway implements OnGatewayInit, OnModuleInit {
     socket.emit('chat', "Salut j'ai bien reçu ton message");
   }
 
-  @SubscribeMessage('create message')
-  async createMessage(@MessageBody() data, @ConnectedSocket() socket: Socket) {
-    socket.emit('message', 'Message created');
+  @SubscribeMessage('like-message')
+  async likeMessage(
+    @MessageBody() messageId: string,
+    @ConnectedSocket() socket: Socket,
+  ) {
+    await this.chatService.likeMessage(messageId);
+    const interactions =
+      await this.chatService.getMessageInteractions(messageId);
+    this.server.to(messageId).emit('message-updated', interactions);
+  }
+
+  @SubscribeMessage('comment-message')
+  async commentMessage(
+    @MessageBody()
+    { messageId, content }: { messageId: string; content: string },
+    @ConnectedSocket() socket: Socket,
+  ) {
+    await this.chatService.commentMessage(messageId, content);
+    const interactions =
+      await this.chatService.getMessageInteractions(messageId);
+    this.server.to(messageId).emit('message-updated', interactions);
+  }
+
+  @SubscribeMessage('join-chat-room')
+  async joinChatRoom(
+    @MessageBody() conversationId: string,
+    @ConnectedSocket() socket: Socket,
+  ) {
+    console.log({ conversationId });
+    socket.join(conversationId);
   }
 
   @SubscribeMessage('connection')
