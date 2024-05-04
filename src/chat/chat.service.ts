@@ -19,36 +19,30 @@ export class ChatService {
     userId: string;
   }) {
     try {
+      // Récupère les utilisateurs via deux appels distincts
       const [existingRecipient, existingUser] = await Promise.all([
         this.prisma.user.findUnique({
-          where: {
-            id: recipientId,
-          },
+          where: { id: recipientId },
         }),
         this.prisma.user.findUnique({
-          where: {
-            id: userId,
-          },
+          where: { id: userId },
         }),
       ]);
+
+      // Vérifie que les deux utilisateurs existent bien
       if (!existingRecipient) {
-        throw new Error("L'utilisateur sélectionné n'existe pas.");
+        throw new Error("Le destinataire n'existe pas.");
       }
 
       if (!existingUser) {
-        throw new Error("L'utilisateur n'existe pas.");
+        throw new Error("L'utilisateur connecté n'existe pas.");
       }
+
+      // Crée une nouvelle conversation en ajoutant les deux utilisateurs
       const createdConversation = await this.prisma.conversation.create({
         data: {
           users: {
-            connect: [
-              {
-                id: existingUser.id,
-              },
-              {
-                id: existingRecipient.id,
-              },
-            ],
+            connect: [{ id: existingUser.id }, { id: existingRecipient.id }],
           },
         },
       });
@@ -76,6 +70,14 @@ export class ChatService {
     conversationId: string;
     senderId: string;
   }) {
+    // Vérification si `content` est fourni
+    if (!sendChatDto.content || sendChatDto.content.trim() === '') {
+      return {
+        error: true,
+        message: 'Le contenu du message ne peut pas être vide.',
+      };
+    }
+
     try {
       const [existingConversation, existingUser] = await Promise.all([
         this.prisma.conversation.findUnique({
@@ -89,6 +91,7 @@ export class ChatService {
           },
         }),
       ]);
+
       if (!existingConversation) {
         throw new Error("La conversation n'existe pas.");
       }
@@ -96,6 +99,8 @@ export class ChatService {
       if (!existingUser) {
         throw new Error("L'utilisateur n'existe pas.");
       }
+
+      // Mise à jour de la conversation avec un nouveau message
       const updatedConversation = await this.prisma.conversation.update({
         where: {
           id: existingConversation.id,
