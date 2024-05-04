@@ -58,4 +58,8 @@ export class AuthService {
       access_token: this.jwtService.sign(payload),
     };
   }
+
+  public validateToken(token: string) {
+    return this.jwtService.verifyAsync(token);
+  }
 }
