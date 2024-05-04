@@ -150,7 +150,7 @@ export class ChatService {
   async getConversations({ userId }: { userId: string }) {
     const existingUser = await this.prisma.user.findUnique({
       where: {
-        id: userId,
+        id: userId, // Make sure userId is defined and valid
       },
       select: {
         conversations: {
@@ -189,7 +189,7 @@ export class ChatService {
     if (!existingUser) {
       throw new Error("L'utilisateur n'existe pas.");
     }
-    const conversation = await Promise.all(
+    const conversations = await Promise.all(
       existingUser.conversations.map(async (conversation) => {
         return {
           ...conversation,
@@ -202,13 +202,7 @@ export class ChatService {
       }),
     );
 
-    return conversation;
-  }
-
-  async likeMessage(messageId: string) {
-    return this.prisma.like.create({
-      data: { messageId },
-    });
+    return conversations;
   }
 
   async commentMessage(messageId: string, content: string) {
