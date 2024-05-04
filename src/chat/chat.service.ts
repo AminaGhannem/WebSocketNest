@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 import { SocketService } from 'src/socket/socket.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
@@ -202,12 +202,55 @@ export class ChatService {
       }),
     );
 
-    return conversations;
+    return conversation;
   }
 
-  async commentMessage(messageId: string, content: string) {
+  async likeMessage(likeMessageDto: LikeMessageDTO) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: likeMessageDto.userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException("L'utilisateur n'existe pas.");
+    }
+    const message = await this.prisma.chatMessage.findUnique({
+      where: { id: likeMessageDto.messageId },
+    });
+
+    if (!message) {
+      throw new NotFoundException("Le message n'existe pas.");
+    }
+
+    return this.prisma.like.create({
+      data: {
+        user: { connect: { id: likeMessageDto.userId } },
+        message: { connect: { id: likeMessageDto.messageId } },
+      },
+    });
+  }
+
+  async commentMessage(commentMessageDTO: CommentMessageDTO) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: commentMessageDTO.userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException("L'utilisateur n'existe pas.");
+    }
+    const message = await this.prisma.chatMessage.findUnique({
+      where: { id: commentMessageDTO.messageId },
+    });
+
+    if (!message) {
+      throw new NotFoundException("Le message n'existe pas.");
+    }
+
     return this.prisma.comment.create({
-      data: { messageId, content },
+      data: {
+        content: commentMessageDTO.content,
+        user: { connect: { id: commentMessageDTO.userId } },
+        message: { connect: { id: commentMessageDTO.messageId } },
+      },
     });
   }
 
@@ -271,3 +314,14 @@ export class ChatService {
     return conversation;
   }
 }
+
+export type LikeMessageDTO = {
+  messageId: string;
+  userId: string;
+};
+
+export type CommentMessageDTO = {
+  messageId: string;
+  content: string;
+  userId: string;
+};

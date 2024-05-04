@@ -61,23 +61,9 @@ export class AppGateway implements OnGatewayInit, OnModuleInit {
     @MessageBody() data: CreateMessageDto,
     @ConnectedSocket() socket: Socket,
   ) {
-    console.log(data);
-    const token = socket.handshake.headers.authorization;
-
-    if (!token) {
-      socket.emit('connection', 'error');
-      socket.disconnect();
-      return;
-    }
-
     try {
-      const decodedToken = await this.authService.validateToken(token);
-      console.log(decodedToken);
-
-      const userId = decodedToken.userId;
-      const conversations = await this.chatService.getConversations({
-        userId: userId,
-      });
+      const userId = await this.getUserIdFromToken(socket);
+      const conversations = await this.chatService.getConversations(userId);
       const conversation = conversations.find((conversation) =>
         conversation.users.some((user) => user.id === data.recieverId),
       );
@@ -86,7 +72,7 @@ export class AppGateway implements OnGatewayInit, OnModuleInit {
         const message = await this.chatService.sendChat({
           sendChatDto: { content: data.content },
           conversationId: conversation.id,
-          senderId: decodedToken.userId,
+          senderId: userId,
         });
         this.server.to(conversation.id).emit('new-message', message);
       } else {
@@ -98,7 +84,7 @@ export class AppGateway implements OnGatewayInit, OnModuleInit {
         const message = await this.chatService.sendChat({
           sendChatDto: { content: data.content },
           conversationId: newConversation.conversationId,
-          senderId: decodedToken.userId,
+          senderId: userId,
         });
 
         this.server
@@ -112,16 +98,31 @@ export class AppGateway implements OnGatewayInit, OnModuleInit {
     }
   }
 
-  // @SubscribeMessage('like-message')
-  // async likeMessage(
-  //   @MessageBody() messageId: string,
-  //   @ConnectedSocket() socket: Socket,
-  // ) {
-  //   await this.chatService.likeMessage(messageId);
-  //   const interactions =
-  //     await this.chatService.getMessageInteractions(messageId);
-  //   this.server.to(messageId).emit('message-updated', interactions);
-  // }
+  async getUserIdFromToken(socket: Socket) {
+    const token = socket.handshake.headers.authorization;
+    const decodedToken = await this.authService.validateToken(token);
+    const userId = await decodedToken.userId;
+    if (!userId) {
+      socket.emit('connection', 'error');
+      socket.disconnect();
+      return;
+    }
+    return userId;
+  }
+
+  @SubscribeMessage('like-message')
+  async likeMessage(
+    @MessageBody() messageId: string,
+    @ConnectedSocket() socket: Socket,
+  ) {
+    const userId = await this.getUserIdFromToken(socket);
+    const likeMessageDTO = {
+      messageId,
+      userId,
+    };
+    const newLike = await this.chatService.likeMessage(likeMessageDTO);
+    this.server.send('like-message', ` new like from user ${newLike.userId}`);
+  }
 
   @SubscribeMessage('comment-message')
   async commentMessage(
@@ -129,10 +130,14 @@ export class AppGateway implements OnGatewayInit, OnModuleInit {
     { messageId, content }: { messageId: string; content: string },
     @ConnectedSocket() socket: Socket,
   ) {
-    await this.chatService.commentMessage(messageId, content);
-    const interactions =
-      await this.chatService.getMessageInteractions(messageId);
-    this.server.to(messageId).emit('message-updated', interactions);
+    const userId = await this.getUserIdFromToken(socket);
+    const commentMessageDTO = {
+      messageId: messageId,
+      content: content,
+      userId: userId,
+    };
+    const newComment = await this.chatService.commentMessage(commentMessageDTO);
+    this.server.send('comment-message', newComment.content);
   }
 
   @SubscribeMessage('connection')
