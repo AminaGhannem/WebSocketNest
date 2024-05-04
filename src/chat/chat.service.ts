@@ -131,13 +131,7 @@ export class ChatService {
           },
         },
       });
-      if (this.socketService && this.socketService.server) {
-        this.socketService.server
-          .to(updatedConversation.id)
-          .emit('send-chat-update', updatedConversation.messages);
-      } else {
-        console.error('socketService or server is undefined');
-      }
+
       console.log(updatedConversation);
 
       return {
@@ -201,7 +195,7 @@ export class ChatService {
           ...conversation,
           users: await Promise.all(
             conversation.users.map(async (user) => {
-              return { user };
+              return user;
             }),
           ),
         };

@@ -63,15 +63,49 @@ export class AppGateway implements OnGatewayInit, OnModuleInit {
   ) {
     console.log(data);
     const token = socket.handshake.headers.authorization;
+
     if (!token) {
       socket.emit('connection', 'error');
       socket.disconnect();
+      return;
     }
+
     try {
       const decodedToken = await this.authService.validateToken(token);
       console.log(decodedToken);
-      const user = decodedToken.userId;
-    } catch {
+
+      const userId = decodedToken.userId;
+      const conversations = await this.chatService.getConversations(userId);
+      const conversation = conversations.find((conversation) =>
+        conversation.users.some((user) => user.id === data.recieverId),
+      );
+
+      if (conversation) {
+        const message = await this.chatService.sendChat({
+          sendChatDto: { content: data.content },
+          conversationId: conversation.id,
+          senderId: decodedToken.userId,
+        });
+        this.server.to(conversation.id).emit('new-message', message);
+      } else {
+        const newConversation = await this.chatService.createConversation({
+          createConversationDto: { recipientId: userId },
+          userId: data.recieverId,
+        });
+
+        const message = await this.chatService.sendChat({
+          sendChatDto: { content: data.content },
+          conversationId: newConversation.conversationId,
+          senderId: decodedToken.userId,
+        });
+
+        this.server
+          .to(newConversation.conversationId)
+          .emit('new-message', message);
+      }
+    } catch (error) {
+      console.error(error);
+      socket.emit('connection', 'error');
       socket.disconnect();
     }
   }
