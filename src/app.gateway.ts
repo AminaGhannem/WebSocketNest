@@ -45,7 +45,7 @@ export class AppGateway implements OnGatewayInit, OnModuleInit {
     }
     try {
       const decodedToken = await this.authService.validateToken(token);
-      console.log(decodedToken);
+      // console.log(decodedToken);
       const user = await this.userService.getUser(decodedToken.userId);
       if (user)
         this.clients.add({ userId: decodedToken.userId, socket: socket });
@@ -58,38 +58,55 @@ export class AppGateway implements OnGatewayInit, OnModuleInit {
 
   @SubscribeMessage('test')
   async sendMessage(
-    @MessageBody() data: CreateMessageDto,
+    @MessageBody() data: any,
     @ConnectedSocket() socket: Socket,
   ) {
+    data = JSON.parse(data);
+    const dataDto = {
+      recieverId: data.recieverId,
+      content: data.content,
+    };
+
+    // console.log(dataDto);
     try {
       const userId = await this.getUserIdFromToken(socket);
-      const conversations = await this.chatService.getConversations({userId : userId});
+      const conversations = await this.chatService.getConversations({
+        userId: userId,
+      });
       const conversation = conversations.find((conversation) =>
-        conversation.users.some((user) => user.id === data.recieverId),
+        conversation.users.some((user) => user.id === dataDto.recieverId),
       );
 
       if (conversation) {
-        const message = await this.chatService.sendChat({
-          sendChatDto: { content: data.content },
+        await this.chatService.sendChat({
+          sendChatDto: { content: dataDto.content },
           conversationId: conversation.id,
           senderId: userId,
         });
-        this.server.to(conversation.id).emit('new-message', message);
+        const client = Array.from(this.clients).find(
+          (client) => client.userId === dataDto.recieverId,
+        );
+
+        console.log(client);
+        if (!client) return;
+        this.server.to(client.socket.id).emit('test', dataDto.content);
       } else {
         const newConversation = await this.chatService.createConversation({
-          createConversationDto: { recipientId: data.recieverId },
+          createConversationDto: { recipientId: dataDto.recieverId },
           userId: userId,
         });
 
-        const message = await this.chatService.sendChat({
-          sendChatDto: { content: data.content },
+        await this.chatService.sendChat({
+          sendChatDto: { content: dataDto.content },
           conversationId: newConversation.conversationId,
           senderId: userId,
         });
-
-        this.server
-          .to(newConversation.conversationId)
-          .emit('new-message', message);
+        const client = Array.from(this.clients).find(
+          (client) => client.userId === dataDto.recieverId,
+        );
+        console.log(client);
+        if (!client) return;
+        this.server.to(client.socket.id).emit('test', dataDto.content);
       }
     } catch (error) {
       console.error(error);
