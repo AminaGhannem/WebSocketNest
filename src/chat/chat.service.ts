@@ -207,7 +207,7 @@ export class ChatService {
       }),
     );
 
-    return conversation;
+    return conversations;
   }
 
   async likeMessage(likeMessageDto: LikeMessageDTO) {

@@ -63,7 +63,7 @@ export class AppGateway implements OnGatewayInit, OnModuleInit {
   ) {
     try {
       const userId = await this.getUserIdFromToken(socket);
-      const conversations = await this.chatService.getConversations(userId);
+      const conversations = await this.chatService.getConversations({userId : userId});
       const conversation = conversations.find((conversation) =>
         conversation.users.some((user) => user.id === data.recieverId),
       );
@@ -77,8 +77,8 @@ export class AppGateway implements OnGatewayInit, OnModuleInit {
         this.server.to(conversation.id).emit('new-message', message);
       } else {
         const newConversation = await this.chatService.createConversation({
-          createConversationDto: { recipientId: userId },
-          userId: data.recieverId,
+          createConversationDto: { recipientId: data.recieverId },
+          userId: userId,
         });
 
         const message = await this.chatService.sendChat({
