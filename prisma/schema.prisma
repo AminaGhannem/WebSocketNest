@@ -4,10 +4,9 @@
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
-
 datasource db {
-  provider     = "sqlite"
-  url          = "file:./dev.db"
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 generator client {
@@ -15,31 +14,49 @@ generator client {
 }
 
 model User {
-  id       String      @id @default(cuid())
-  email     String   @unique
-  firstName String?
-  password String
+  id            String         @id @default(cuid())
+  email         String         @unique
+  firstName     String?
+  password      String
   conversations Conversation[]
-  sentMessages ChatMessage[]
+  sentMessages  ChatMessage[]
 }
 
 model Conversation {
-  id       String      @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  users User[]
-  messages ChatMessage[]
+  id        String        @id @default(cuid())
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  users     User[]
+  messages  ChatMessage[]
 }
 
 model ChatMessage {
-  id       String      @id @default(cuid())
-  content     String
-  createdAt DateTime @default(now())
-  sender User @relation(fields: [senderId], references: [id])
-  senderId String
+  id           String       @id @default(cuid())
+  content      String
+  createdAt    DateTime     @default(now())
+  sender       User         @relation(fields: [senderId], references: [id])
+  senderId     String
   conversation Conversation @relation(fields: [chatId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  chatId String
+  chatId       String
+  comments   Comment[]
+  likes      Like[]
 
   @@index([chatId])
   @@index([senderId])
+}
+
+model Comment {
+  id        String      @id @default(cuid())
+  content   String
+  messageId String
+  message   ChatMessage @relation(fields: [messageId], references: [id])
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+model Like {
+  id        String      @id @default(cuid())
+  messageId String
+  message   ChatMessage @relation(fields: [messageId], references: [id])
+  createdAt DateTime    @default(now())
 }
