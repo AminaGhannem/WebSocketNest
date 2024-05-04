@@ -17,7 +17,7 @@ import { SendChatDto } from './dto/send-chat.dto';
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
   @UseGuards(JwtAuthGuard)
-  @Post('create')
+  @Post('')
   async createConversation(
     @Body() createConversationDto: CreateConversationDto,
     @Request() request: RequestWithUser,
