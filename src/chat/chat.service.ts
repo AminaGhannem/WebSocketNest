@@ -131,9 +131,13 @@ export class ChatService {
           },
         },
       });
-      this.socketService.server
-        .to(updatedConversation.id)
-        .emit('send-chat-update', updatedConversation.messages);
+      if (this.socketService && this.socketService.server) {
+        this.socketService.server
+          .to(updatedConversation.id)
+          .emit('send-chat-update', updatedConversation.messages);
+      } else {
+        console.error('socketService or server is undefined');
+      }
       console.log(updatedConversation);
 
       return {
@@ -191,7 +195,7 @@ export class ChatService {
     if (!existingUser) {
       throw new Error("L'utilisateur n'existe pas.");
     }
-    const conversationsWithAvatars = await Promise.all(
+    const conversation = await Promise.all(
       existingUser.conversations.map(async (conversation) => {
         return {
           ...conversation,
@@ -204,7 +208,7 @@ export class ChatService {
       }),
     );
 
-    return conversationsWithAvatars;
+    return conversation;
   }
 
   async getConversation({
@@ -257,14 +261,6 @@ export class ChatService {
       throw new Error("Cette conversation n'existe pas.");
     }
 
-    const conversationWithAvatars = {
-      ...conversation,
-      users: await Promise.all(
-        conversation.users.map(async (user) => {
-          return { user };
-        }),
-      ),
-    };
-    return conversationWithAvatars;
+    return conversation;
   }
 }
